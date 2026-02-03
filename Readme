@@ -1,0 +1,213 @@
+The user wants me to analyze two time series datasets to determine if there was an improvement in CPU usage after some server optimizations. They have CPU % measurements at 15-minute intervals for 24 hours, giving them 96 data points per day.
+To properly analyze this, I'll need to:
+
+First, get the actual data from the user
+Apply appropriate statistical tests to determine if there's a significant difference
+
+Let me ask for the data.
+
+The two time series datasets - either as files (CSV, Excel, etc.) or pasted directly
+
+Once I have the data, I'll perform a comprehensive analysis including:
+
+Descriptive statistics - mean, median, standard deviation for both days
+Visualization - overlay plots to see patterns
+Statistical tests such as:
+
+Paired t-test or Wilcoxon signed-rank test - to compare measurements at corresponding time points
+Two-sample t-test or Mann-Whitney U test - to compare overall distributions
+Effect size calculation (Cohen's d) - to quantify the magnitude of improvement
+
+
+Time-of-day analysis - to see if improvements are consistent or vary by period
+
+
+Key Findings
+MetricBeforeAfterChangeMean CPU54.47%38.67%-29% reductionStd Dev19.1017.82Improved stability
+
+Statistical Tests Results
+Testp-valueResultPaired t-test< 0.000001SignificantWilcoxon Signed-Rank< 0.000001SignificantMann-Whitney U< 0.000001Significant
+
+Effect Size
+
+Cohen's d = 0.86 → Large effect
+95% Confidence Interval for improvement: [13.58%, 18.01%]
+
+Verdict: ✓ YES, there is a significant improvement
+The synthetic data demonstrates both statistical significance (p < 0.05) and practical significance (large effect size). The improvement is consistent across all time periods (night, morning, afternoon, evening).
+The visualizations show:
+
+Time series overlay - "After" consistently below "Before"
+Box plots - Clear shift in distribution downward
+Histograms - Distributions are clearly separated
+Difference plot - Almost all bars are green (positive improvement)
+
+Time	CPU_Before (%)	CPU_After (%)
+2	00:00	38.97	18.77
+
+I'll create comprehensive Python scripts using Plotly for interactive visualizations.Orchestrated Python scripts for data analysis and Plotly visualizationI've created a complete Python project for CPU time series analysis using Plotly. Here's the structure:
+Project Files
+FileDescriptionmain.pyMain orchestration script - runs full analysis pipelinestatistical_analysis.pyStatistical tests (t-tests, Wilcoxon, Mann-Whitney, effect sizes)plotly_visualizations.pyInteractive Plotly charts (9 different visualization types)data_generator.pySynthetic data generation with realistic patternsrequirements.txtDependencies (numpy, pandas, scipy, plotly, kaleido)README.mdFull documentation
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run with synthetic data
+python main.py --seed 42 --output-dir ./results
+
+# Run with your own CSV data
+python main.py --data-file your_data.csv --output-dir ./results
+
+Interactive Visualizations Included
+
+Dashboard - 4-panel overview (time series, box plot, histogram, difference)
+Time Series - Before/After overlay with improvement shading
+Box Plot - Distribution comparison with mean markers
+Histogram - Overlapping frequency distributions
+Difference Plot - Point-by-point improvement bars
+Violin Plot - Kernel density + box plot
+Heatmap - Improvement by hour/minute
+Q-Q Plot - Normality diagnostics
+Multi-Day Analysis: 5 Statistical Approaches
+With 2 days of data before and after, here are your options:
+Comparison of Approaches
+ApproachDescriptionp-valueSignificant?Best ForConcatenatedPool all 192 points per condition0.000000✓ YESSimple, many measurementsAveraged (Typical Day)Average days → compare profiles0.000000✓ YESTime-of-day patternsDaily MeansEach day = 1 observation0.085✗ NOHigh day-to-day variationMixed EffectsAccounts for clustering0.000000✓ YESRecommendedBootstrapResample days, robust CI0.000000✓ YESNo assumptions
+Key Insight for 2 Days
+The Daily Means approach shows NOT significant (p=0.085) because with only 2 days before and 2 days after, you have just 4 total observations — extremely low statistical power!
+Recommendations
+For 2 days before/after, use:
+
+Mixed Effects (recommended) — balances power and validity
+Averaged Profile — good for time-of-day patterns
+Bootstrap — robust, no distributional assumptions
+
+⚠️ Avoid Daily Means with <5 days per condition (too few observations)
+Usage
+pythonfrom multiday_analysis import generate_multiday_data, run_all_approaches, print_multiday_report
+
+# Load your data as 2D arrays: shape (n_days, points_per_day)
+# before_data[0] = day 1 before, before_data[1] = day 2 before, etc.
+
+# Or generate synthetic data
+before_data, after_data, df = generate_multiday_data(
+    n_days_before=2,
+    n_days_after=2,
+    random_seed=42
+)
+
+# Run all 5 approaches
+results = run_all_approaches(before_data, after_data)
+
+# Print comparison report
+print(print_multiday_report(results))
+The interactive dashboard shows all days overlaid, averaged profiles with confidence bands, and the approach comparison chart.
+========
+To determine if the server improvements led to a statistically significant reduction in CPU usage, we cannot simply look at the averages. We must account for the variability of the data and the paired nature of the measurements (comparing specific times of day against each other).Here is the step-by-step statistical approach I recommend to validate the improvement.1. Visual Inspection (The "Eye Test")Before running any tests, plot both time series on the same graph with Time on the X-axis and CPU % on the Y-axis.What to look for: Does the "After" line consistently sit below the "Before" line? Are there specific times (e.g., peak traffic hours) where the gap is wider?2. The Primary Test: Paired t-TestSince you have measurements at identical intervals (e.g., 09:15 on Day 1 vs. 09:15 on Day 2), the data is paired. We assume that the traffic load at a specific time on Day 1 is roughly similar to the load at the same time on Day 2.We calculate the difference ($d$) for each 15-minute interval:$$d_i = \text{CPU}_{\text{before}, i} - \text{CPU}_{\text{after}, i}$$We then test the null hypothesis ($H_0$) that the mean difference is zero (no change) against the alternative hypothesis ($H_a$) that the mean difference is greater than zero (improvement).The formula for the t-statistic is:$$t = \frac{\bar{d}}{s_d / \sqrt{n}}$$Where:$\bar{d}$ is the average difference.$s_d$ is the standard deviation of the differences.$n$ is the number of pairs (96 intervals).Interpretation: If the resulting p-value is less than your significance level (typically 0.05), you have statistically significant proof of improvement.3. The Robust Alternative: Wilcoxon Signed-Rank TestThe t-test assumes the differences follow a normal distribution. If your CPU data has extreme outliers (e.g., random spikes to 100%) or is heavily skewed, the t-test might be misleading.Why use this: The Wilcoxon test ranks the differences rather than using raw values. It is robust against outliers.Result: It tells you if the median difference suggests a systematic reduction in CPU usage.4. Effect Size (Cohen's d)Statistical significance tells you if the change is real, but Effect Size tells you if it matters.$$d = \frac{\bar{x}_1 - \bar{x}_2}{s_{\text{pooled}}}$$0.2: Small effect (Technical improvement, maybe not noticeable to users).0.5: Medium effect.0.8+: Large effect (Substantial performance gain).5. Time Series Caveat: AutocorrelationStandard statistics assume each data point is independent, but time series data is "autocorrelated" (high CPU at 10:00 usually means high CPU at 10:15).Impact: This can artificially inflate your confidence (p-values look better than they are).Solution: For a rigorous check, check the residuals for autocorrelation. If strict independence is required, we would use an ARIMA model, but for a simple "Before vs. After" server check, the Paired t-test is usually sufficient for engineering decisions.Summary of Metrics to ReportTo present this to stakeholders, you should calculate:Mean Reduction: "On average, CPU usage dropped by X%."Peak Reduction: "During peak load (e.g., 12 PM - 4 PM), usage dropped by Y%."Statistical Confidence: "This result is statistically significant with p < 0.01."
+=====
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+
+def plot_cpu_comparison(file_path):
+    # Load the dataset
+    try:
+        df = pd.read_csv(file_path)
+    except FileNotFoundError:
+        print(f"Error: The file '{file_path}' was not found.")
+        return
+
+    # Create the figure
+    plt.figure(figsize=(14, 7))
+
+    # Plot both time series
+    plt.plot(df['Time'], df['CPU_Before (%)'], label='Before Improvement', color='#d62728', linewidth=2, alpha=0.8)
+    plt.plot(df['Time'], df['CPU_After (%)'], label='After Improvement', color='#2ca02c', linewidth=2, alpha=0.8)
+
+    # Formatting the X-axis to be readable (showing a tick every 4 intervals/1 hour)
+    # Assuming 15-minute intervals, 4 ticks = 1 hour
+    plt.xticks(np.arange(0, len(df), 4), rotation=45)
+
+    # Add labels and title
+    plt.xlabel('Time of Day', fontsize=12)
+    plt.ylabel('CPU Usage (%)', fontsize=12)
+    plt.title('Server CPU Usage: Before vs. After Optimization', fontsize=16)
+    plt.legend(fontsize=12)
+    plt.grid(True, linestyle='--', alpha=0.5)
+    
+    # Adjust layout to prevent clipping of tick labels
+    plt.tight_layout()
+
+    # Save the plot
+    plt.savefig('cpu_comparison_plot.png')
+    print("Plot saved as 'cpu_comparison_plot.png'")
+    
+    # Optional: Display the plot
+    plt.show()
+
+if __name__ == "__main__":
+    plot_cpu_comparison('cpu_data.csv')
+=====
+import pandas as pd
+import scipy.stats as stats
+import numpy as np
+
+def analyze_performance(file_path):
+    # Load the dataset
+    try:
+        df = pd.read_csv(file_path)
+    except FileNotFoundError:
+        print(f"Error: The file '{file_path}' was not found.")
+        return
+
+    # Variables
+    before = df['CPU_Before (%)']
+    after = df['CPU_After (%)']
+    
+    # 1. Basic Metrics
+    mean_diff = before.mean() - after.mean()
+    std_diff = (before - after).std()
+    
+    # 2. Peak Load Analysis (Top 10% of 'Before' usage)
+    # We identify the threshold for the busiest times
+    threshold = before.quantile(0.90)
+    peak_indices = before >= threshold
+    
+    peak_before_avg = before[peak_indices].mean()
+    peak_after_avg = after[peak_indices].mean()
+    peak_improvement = peak_before_avg - peak_after_avg
+
+    # 3. Statistical Tests
+    # Paired t-test (Parametric)
+    t_stat, p_value_t = stats.ttest_rel(before, after, alternative='greater')
+    
+    # Wilcoxon Signed-Rank Test (Non-parametric / Robust)
+    w_stat, p_value_w = stats.wilcoxon(before, after, alternative='greater')
+    
+    # 4. Effect Size (Cohen's d)
+    # d = (Mean of Differences) / (Standard Deviation of Differences)
+    cohens_d = mean_diff / std_diff
+
+    # Output Results
+    print("=== Statistical Analysis Report ===")
+    print(f"Observation Count: {len(df)}")
+    print("-" * 30)
+    print(f"Mean CPU (Before): {before.mean():.2f}%")
+    print(f"Mean CPU (After):  {after.mean():.2f}%")
+    print(f"Average Reduction: {mean_diff:.2f}%")
+    print("-" * 30)
+    print(f"Peak Load Avg (Before): {peak_before_avg:.2f}%")
+    print(f"Peak Load Avg (After):  {peak_after_avg:.2f}%")
+    print(f"Peak Period Reduction:  {peak_improvement:.2f}%")
+    print("-" * 30)
+    print(f"Paired t-test p-value:   {p_value_t:.5e}")
+    print(f"Wilcoxon test p-value:   {p_value_w:.5e}")
+    print(f"Cohen's d (Effect Size): {cohens_d:.2f}")
+    
+    # Interpretation
+    if p_value_t < 0.05:
+        print("\nCONCLUSION: The improvement is STATISTICALLY SIGNIFICANT.")
+    else:
+        print("\nCONCLUSION: The improvement is NOT statistically significant.")
+
+if __name__ == "__main__":
+    analyze_performance('cpu_data.csv')
