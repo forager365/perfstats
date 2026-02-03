@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPU Usage Improvement Analysis Report</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2em;
+        }
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .card h2 {
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .verdict {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #00B050;
+            padding: 20px;
+            text-align: center;
+            background-color: rgba(0,0,0,0.05);
+            border-radius: 10px;
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .metric-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .metric-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #667eea;
+            color: white;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .significant {
+            color: #00B050;
+            font-weight: bold;
+        }
+        .not-significant {
+            color: #FF0000;
+        }
+        .plot-link {
+            display: inline-block;
+            margin: 5px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .plot-link:hover {
+            background: #5a67d8;
+        }
+        iframe {
+            width: 100%;
+            height: 500px;
+            border: none;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 CPU Usage Improvement Analysis</h1>
+        <p>Statistical analysis of server performance before and after optimization</p>
+    </div>
+    
+    <div class="card">
+        <div class="verdict">
+            ✓ YES - Significant Improvement Detected
+        </div>
+        <p style="text-align: center; color: #666; margin-top: 15px;">
+            The analysis shows a statistically significant improvement (p < 0.05) with a large effect size (Cohen's d = 1.02). Mean CPU usage decreased by 30.2%.
+        </p>
+    </div>
+    
+    <div class="card">
+        <h2>📈 Key Metrics</h2>
+        <div class="metrics-grid">
+            <div class="metric-box">
+                <div class="metric-value">30.2%</div>
+                <div class="metric-label">Mean Reduction</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric-value">53.6%</div>
+                <div class="metric-label">Before (Mean)</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric-value">37.4%</div>
+                <div class="metric-label">After (Mean)</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric-value">1.02</div>
+                <div class="metric-label">Cohen's d (Large)</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2>📋 Descriptive Statistics</h2>
+        <table>
+            <tr>
+                <th>Metric</th>
+                <th>Before</th>
+                <th>After</th>
+                <th>Difference</th>
+            </tr>
+            <tr>
+                <td>Mean</td>
+                <td>53.62%</td>
+                <td>37.40%</td>
+                <td>16.22%</td>
+            </tr>
+            <tr>
+                <td>Median</td>
+                <td>53.13%</td>
+                <td>37.31%</td>
+                <td>15.82%</td>
+            </tr>
+            <tr>
+                <td>Std Dev</td>
+                <td>17.87%</td>
+                <td>13.59%</td>
+                <td>4.27%</td>
+            </tr>
+            <tr>
+                <td>Min</td>
+                <td>18.69%</td>
+                <td>5.99%</td>
+                <td>-</td>
+            </tr>
+            <tr>
+                <td>Max</td>
+                <td>93.93%</td>
+                <td>67.22%</td>
+                <td>-</td>
+            </tr>
+        </table>
+    </div>
+    
+    <div class="card">
+        <h2>🔬 Statistical Tests</h2>
+        <table>
+            <tr>
+                <th>Test</th>
+                <th>Statistic</th>
+                <th>p-value</th>
+                <th>Result</th>
+            </tr>
+            <tr>
+                <td>Shapiro-Wilk Normality Test</td>
+                <td>0.9725</td>
+                <td>0.040824</td>
+                <td class="significant">Significant</td>
+            </tr>
+            <tr>
+                <td>Shapiro-Wilk Normality Test</td>
+                <td>0.9586</td>
+                <td>0.004063</td>
+                <td class="significant">Significant</td>
+            </tr>
+            <tr>
+                <td>Paired t-test</td>
+                <td>15.4495</td>
+                <td>0.000000</td>
+                <td class="significant">Significant</td>
+            </tr>
+            <tr>
+                <td>Wilcoxon Signed-Rank Test</td>
+                <td>33.0000</td>
+                <td>0.000000</td>
+                <td class="significant">Significant</td>
+            </tr>
+            <tr>
+                <td>Independent Two-Sample t-test</td>
+                <td>7.0788</td>
+                <td>0.000000</td>
+                <td class="significant">Significant</td>
+            </tr>
+            <tr>
+                <td>Mann-Whitney U Test (one-tailed)</td>
+                <td>6892.0000</td>
+                <td>0.000000</td>
+                <td class="significant">Significant</td>
+            </tr>
+            <tr>
+                <td>Levene's Test (Equality of Variances)</td>
+                <td>9.1856</td>
+                <td>0.002779</td>
+                <td class="significant">Significant</td>
+            </tr>
+        </table>
+    </div>
+    
+    <div class="card">
+        <h2>📊 Confidence Interval</h2>
+        <p>
+            <strong>Mean Difference:</strong> 16.22% (SE: 1.05)<br>
+            <strong>95% Confidence Interval:</strong> 
+            [14.14%, 18.30%]
+        </p>
+        <p style="color: #666;">
+            We are 95% confident that the true mean reduction 
+            in CPU usage is between 14.14% and 18.30%.
+        </p>
+    </div>
+    <div class="card">
+        <h2>⏰ Time Period Analysis</h2>
+        <table>
+            <tr>
+                <th>Period</th>
+                <th>Before Mean</th>
+                <th>After Mean</th>
+                <th>Reduction</th>
+                <th>p-value</th>
+                <th>Significant</th>
+            </tr>
+            <tr>
+                <td>Night (00:00-06:00)</td>
+                <td>35.37%</td>
+                <td>21.85%</td>
+                <td>13.52% (38.2%)</td>
+                <td>0.0000</td>
+                <td class="significant">Yes</td>
+            </tr>
+            <tr>
+                <td>Morning (06:00-12:00)</td>
+                <td>58.08%</td>
+                <td>41.63%</td>
+                <td>16.44% (28.3%)</td>
+                <td>0.0000</td>
+                <td class="significant">Yes</td>
+            </tr>
+            <tr>
+                <td>Afternoon (12:00-18:00)</td>
+                <td>71.10%</td>
+                <td>51.62%</td>
+                <td>19.48% (27.4%)</td>
+                <td>0.0000</td>
+                <td class="significant">Yes</td>
+            </tr>
+            <tr>
+                <td>Evening (18:00-24:00)</td>
+                <td>49.95%</td>
+                <td>34.51%</td>
+                <td>15.43% (30.9%)</td>
+                <td>0.0000</td>
+                <td class="significant">Yes</td>
+            </tr>
+        </table>
+    </div>
+    <div class="card">
+        <h2>📊 Interactive Visualizations</h2>
+        <p>Click to open individual plots:</p>
+        <a href="dashboard.html" class="plot-link">📊 Full Dashboard</a>
+        <a href="time_series.html" class="plot-link">📈 Time Series</a>
+        <a href="box_plot.html" class="plot-link">📦 Box Plot</a>
+        <a href="histogram.html" class="plot-link">📊 Histogram</a>
+        <a href="difference.html" class="plot-link">📉 Difference Plot</a>
+        <a href="violin.html" class="plot-link">🎻 Violin Plot</a>
+        <a href="heatmap.html" class="plot-link">🗺️ Heatmap</a>
+    </div>
+    
+    <div class="card">
+        <h2>📊 Dashboard Preview</h2>
+        <iframe src="dashboard.html"></iframe>
+    </div>
+    
+    <footer style="text-align: center; color: #666; margin-top: 20px;">
+        Generated by CPU Usage Analysis Tool
+    </footer>
+</body>
+</html>
