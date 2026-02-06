@@ -1,0 +1,225 @@
+In the context of RDS PostgreSQL (and RDS in general), a DB subnet group is a collection of subnets (typically private) that you create in a VPC and designate for your RDS database instances.
+
+Key Points:
+Purpose:
+
+Defines which subnets RDS can place your database instance in
+
+Enables Multi-AZ deployments by requiring subnets in at least 2 different Availability Zones
+
+Provides network isolation and security for your database
+
+How Subnets are Grouped:
+
+You manually select and group subnets from your VPC
+
+Must span at least 2 Availability Zones (AWS requirement for high availability)
+
+All subnets must be in the same VPC
+
+Typically use private subnets (no direct internet access) for security
+
+Example Structure:
+
+VPC: 10.0.0.0/16
+├── DB Subnet Group: "my-db-subnet-group"
+    ├── Private Subnet 1: 10.0.1.0/24 (us-east-1a)
+    ├── Private Subnet 2: 10.0.2.0/24 (us-east-1b)
+    └── Private Subnet 3: 10.0.3.0/24 (us-east-1c)
+
+Copy
+When RDS Uses It:
+
+During instance creation, RDS places the database in one of the subnets from the group
+
+For Multi-AZ deployments, RDS places the standby replica in a different AZ's subnet
+
+For read replicas, you can specify the same or different subnet group
+
+Common Practice:
+
+Create separate subnet groups for different environments (dev, staging, prod)
+
+Use private subnets with NAT Gateway for outbound connectivity
+
+
+# Get the route table associated with the subnet
+aws ec2 describe-route-tables \
+  --filters "Name=association.subnet-id,Values=SUBNET_ID" \
+  --query 'RouteTables[*].Routes[*].[DestinationCidrBlock,GatewayId]' \
+  --output table
+A subnet is private if:
+
+No route to an Internet Gateway (igw-*)
+
+May have routes to NAT Gateway (nat-*) or VPC endpoints
+
+A subnet is public if:
+
+Has a route like 0.0.0.0/0 → igw-xxxxxxxxx
+
+# Returns "public" if IGW found, otherwise "private"
+aws ec2 describe-route-tables \
+  --filters "Name=association.subnet-id,Values=SUBNET_ID" \
+  --query 'RouteTables[*].Routes[?GatewayId!=`local` && starts_with(GatewayId, `igw-`)]' \
+  --output text | grep -q igw && echo "public" || echo "private"
+  
+To check all subnets in a DB subnet group:
+# First get subnets in the DB subnet group
+aws rds describe-db-subnet-groups \
+  --db-subnet-group-name YOUR_SUBNET_GROUP_NAME \
+  --query 'DBSubnetGroups[0].Subnets[*].[SubnetIdentifier,SubnetAvailabilityZone.Name]' \
+  --output table
+
+given a subnet group identify all db instances using subnets in the group
+
+# Find all DB instances using a specific subnet group
+aws rds describe-db-instances \
+  --query "DBInstances[?DBSubnetGroup.DBSubnetGroupName=='YOUR_SUBNET_GROUP_NAME'].[DBInstanceIdentifier,Engine,DBInstanceStatus]" \
+  --output table
+More detailed output:
+
+Apply security groups to control inbound/outbound traffic to the database
+
+aws rds describe-db-instances \
+  --query "DBInstances[?DBSubnetGroup.DBSubnetGroupName=='YOUR_SUBNET_GROUP_NAME'].[DBInstanceIdentifier,Engine,EngineVersion,DBInstanceClass,AvailabilityZone]" \
+  --output table
+
+
+Get just the instance identifiers:
+
+aws rds describe-db-instances \
+  --query "DBInstances[?DBSubnetGroup.DBSubnetGroupName=='YOUR_SUBNET_GROUP_NAME'].DBInstanceIdentifier" \
+  --output text
+aws rds describe-db-instances \
+  --query "DBInstances[?DBSubnetGroup.DBSubnetGroupName=='YOUR_SUBNET_GROUP_NAME'].DBInstanceIdentifier" \
+  --output text
+aws rds describe-db-instances \
+  --query "length(DBInstances[?DBSubnetGroup.DBSubnetGroupName=='YOUR_SUBNET_GROUP_NAME'])"
+--------
+# Delete without final snapshot (use for non-prod)
+aws rds delete-db-instance \
+  --db-instance-identifier YOUR_DB_INSTANCE_ID \
+  --skip-final-snapshot
+
+# Delete with final snapshot (recommended for prod)
+aws rds delete-db-instance \
+  --db-instance-identifier YOUR_DB_INSTANCE_ID \
+  --final-db-snapshot-identifier YOUR_DB_INSTANCE_ID-final-snapshot
+
+# Monitor deletion status
+aws rds describe-db-instances \
+  --db-instance-identifier YOUR_DB_INSTANCE_ID \
+  --query 'DBInstances[0].DBInstanceStatus'
+
+
+# Check if other instances use this subnet group first
+aws rds describe-db-instances \
+  --query "DBInstances[?DBSubnetGroup.DBSubnetGroupName=='YOUR_SUBNET_GROUP_NAME'].DBInstanceIdentifier" \
+  --output text
+
+# Delete subnet group if empty
+aws rds delete-db-subnet-group \
+  --db-subnet-group-name YOUR_SUBNET_GROUP_NAME
+
+# Check what's using the subnet
+aws ec2 describe-network-interfaces \
+  --filters "Name=subnet-id,Values=SUBNET_ID" \
+  --query 'NetworkInterfaces[*].[NetworkInterfaceId,Description]'
+
+# Delete subnet if nothing is using it
+aws ec2 delete-subnet --subnet-id SUBNET_ID
+
+
+RDS deletion takes several minutes
+
+Can't delete subnet group while instances are using it
+
+Can't delete subnets if ENIs or other resources are attached
+
+Consider taking a final snapshot for production databases
+
+Delete associated security groups and parameter groups if no longer needed
+
+# Delete DB parameter group
+aws rds delete-db-parameter-group \
+  --db-parameter-group-name YOUR_PARAMETER_GROUP_NAME
+
+
+# Check which instances use this parameter group
+aws rds describe-db-instances \
+  --query "DBInstances[?DBParameterGroups[?DBParameterGroupName=='YOUR_PARAMETER_GROUP_NAME']].[DBInstanceIdentifier,DBParameterGroups[0].DBParameterGroupName]" \
+  --output table
+  
+aws rds delete-db-cluster-parameter-group \
+  --db-cluster-parameter-group-name YOUR_CLUSTER_PARAMETER_GROUP_NAME
+
+  Step 1: Get the KMS Key ID from the DB Instance
+# Find the KMS key used by the database
+aws rds describe-db-instances \
+  --db-instance-identifier YOUR_DB_INSTANCE_ID \
+  --query 'DBInstances[0].KmsKeyId' \
+  --output text
+
+# Schedule deletion (minimum 7 days, maximum 30 days)
+aws kms schedule-key-deletion \
+  --key-id YOUR_KMS_KEY_ID \
+  --pending-window-in-days 7
+Important Notes:
+
+KMS keys cannot be deleted immediately - minimum 7-day waiting period
+
+Key enters "PendingDeletion" state and cannot be used
+
+Deletion can be canceled during the waiting period
+
+Ensure no other resources (snapshots, other DB instances) are using the key
+
+# Check other DB instances using the same key
+aws rds describe-db-instances \
+  --query "DBInstances[?KmsKeyId=='YOUR_KMS_KEY_ARN'].[DBInstanceIdentifier,KmsKeyId]" \
+  --output table
+aws kms cancel-key-deletion --key-id YOUR_KMS_KEY_ID
+
+Delete CloudWatch Alarms
+# List alarms for the DB instance
+aws cloudwatch describe-alarms \
+  --alarm-name-prefix YOUR_DB_INSTANCE_ID \
+  --query 'MetricAlarms[*].AlarmName' \
+  --output text
+
+# Delete specific alarm
+aws cloudwatch delete-alarms \
+  --alarm-names ALARM_NAME_1 ALARM_NAME_2
+
+# Delete all alarms for the instance (one-liner)
+aws cloudwatch describe-alarms \
+  --query 'MetricAlarms[?contains(Dimensions[?Name==`DBInstanceIdentifier`].Value, `YOUR_DB_INSTANCE_ID`)].AlarmName' \
+  --output text | xargs -n 1
+  aws cloudwatch delete-alarms --alarm-names
+Delete CloudWatch Log Groups
+# List log groups for RDS instance
+aws logs describe-log-groups \
+  --log-group-name-prefix /aws/rds/instance/YOUR_DB_INSTANCE_ID \
+  --query 'logGroups[*].logGroupName' \
+  --output text
+
+# Delete specific log group
+aws logs delete-log-group \
+  --log-group-name /aws/rds/instance/YOUR_DB_INSTANCE_ID/error
+
+# Delete all log groups for the instance
+aws logs describe-log-groups \
+  --log-group-name-prefix /aws/rds/instance/YOUR_DB_INSTANCE_ID \
+  --query 'logGroups[*].logGroupName' \
+  --output text | xargs -n 1 aws logs delete-log-group --log-group-name
+
+  Common RDS log group patterns:
+
+/aws/rds/instance/YOUR_DB_INSTANCE_ID/error
+
+/aws/rds/instance/YOUR_DB_INSTANCE_ID/postgresql
+
+/aws/rds/instance/YOUR_DB_INSTANCE_ID/slowquery
+
+Replace YOUR_DB_INSTANCE_ID with your actual database instance identifier.
