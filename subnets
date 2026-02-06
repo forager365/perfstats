@@ -314,6 +314,32 @@ role_arn = "arn:aws:iam::123456789012:role/MyRole"
 users = get_users_for_role(role_arn)
 print(f"Users with access to {role_arn}: {users}")
 # Find who actually assumed the role (requires CloudTrail)
+
+To get all DB instances using a specific parameter group:
+
+# List all DB instances using the parameter group
+aws rds describe-db-instances \
+  --query "DBInstances[?DBParameterGroups[?DBParameterGroupName=='YOUR_PARAMETER_GROUP_NAME']].[DBInstanceIdentifier,Engine,DBInstanceStatus]" \
+  --output table
+
+Copy
+bash
+Get just the instance identifiers:
+
+aws rds describe-db-instances \
+  --query "DBInstances[?DBParameterGroups[?DBParameterGroupName=='YOUR_PARAMETER_GROUP_NAME']].DBInstanceIdentifier" \
+  --output text
+
+Copy
+bash
+Count instances using the parameter group:
+
+aws rds describe-db-instances \
+  --query "length(DBInstances[?DBParameterGroups[?DBParameterGroupName=='YOUR_PARAMETER_GROUP_NAME']])"
+
+Copy
+bash
+Replace YOUR_PARAMETER_GROUP_NAME with your actual parameter group name.
 aws cloudtrail lookup-events \
     --lookup-attributes AttributeKey=ResourceName,AttributeValue=<role-arn> \
     --query 'Events[?EventName==`AssumeRole`].[Username,EventTime]' \
