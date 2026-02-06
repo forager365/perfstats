@@ -218,8 +218,104 @@ aws logs describe-log-groups \
 
 /aws/rds/instance/YOUR_DB_INSTANCE_ID/error
 
+# Get the role name from ARN
+ROLE_NAME=$(echo "arn:aws:iam::123456789012:role/MyRole" | cut -d'/' -f2)
+
+# Check the role's trust policy to see who can assume it
+aws iam get-role --role-name $ROLE_NAME --query 'Role.AssumeRolePolicyDocument'
+
 /aws/rds/instance/YOUR_DB_INSTANCE_ID/postgresql
 
 /aws/rds/instance/YOUR_DB_INSTANCE_ID/slowquery
 
 Replace YOUR_DB_INSTANCE_ID with your actual database instance identifier.
+
+# List all users and check their inline policies for AssumeRole permissions
+aws iam list-users --query 'Users[*].UserName' --output text | while read user; do
+    # Check inline policies
+    aws iam list-user-policies --user-name $user --query 'PolicyNames[*]' --output text | while read policy; do
+        aws iam get-user-policy --user-name $user --policy-name $policy --query 'PolicyDocument' | grep -q "sts:AssumeRole" && echo "User: $user (inline policy: $policy)"
+    done
+    
+    # Check attached policies
+    aws iam list-attached-user-policies --user-name $user --query 'AttachedPolicies[*].PolicyArn' --output text | while read policy_arn; do
+        policy_version=$(aws iam get-policy --policy-arn $policy_arn --query 'Policy.DefaultVersionId' --output text)
+        aws iam get-policy-version --policy-arn $policy_arn --version-id $policy_version --query 'PolicyVersion.Document' | grep -q "sts:AssumeRole" && echo "User: $user (attached policy: $policy_arn)"
+    done
+done
+
+
+# List all users and check their inline policies for AssumeRole permissions
+aws iam list-users --query 'Users[*].UserName' --output text | while read user; do
+    # Check inline policies
+    aws iam list-user-policies --user-name $user --query 'PolicyNames[*]' --output text | while read policy; do
+        aws iam get-user-policy --user-name $user --policy-name $policy --query 'PolicyDocument' | grep -q "sts:AssumeRole" && echo "User: $user (inline policy: $policy)"
+    done
+    
+    # Check attached policies
+    aws iam list-attached-user-policies --user-name $user --query 'AttachedPolicies[*].PolicyArn' --output text | while read policy_arn; do
+        policy_version=$(aws iam get-policy --policy-arn $policy_arn --query 'Policy.DefaultVersionId' --output text)
+        aws iam get-policy-version --policy-arn $policy_arn --version-id $policy_version --query 'PolicyVersion.Document' | grep -q "sts:AssumeRole" && echo "User: $user (attached policy: $policy_arn)"
+    done
+done
+
+
+import boto3
+import json
+
+def get_users_for_role(role_arn):
+    iam = boto3.client('iam')
+    role_name = role_arn.split('/')[-1]
+    
+    users_with_access = []
+    
+    # Get all users
+    paginator = iam.get_paginator('list_users')
+    for page in paginator.paginate():
+        for user in page['Users']:
+            user_name = user['UserName']
+            
+            # Check inline policies
+            inline_policies = iam.list_user_policies(UserName=user_name)
+            for policy_name in inline_policies['PolicyNames']:
+                policy = iam.get_user_policy(UserName=user_name, PolicyName=policy_name)
+                if can_assume_role(policy['PolicyDocument'], role_arn):
+                    users_with_access.append(user_name)
+                    break
+            
+            # Check attached policies
+            attached = iam.list_attached_user_policies(UserName=user_name)
+            for policy in attached['AttachedPolicies']:
+                policy_arn = policy['PolicyArn']
+                policy_version = iam.get_policy(PolicyArn=policy_arn)['Policy']['DefaultVersionId']
+                policy_doc = iam.get_policy_version(PolicyArn=policy_arn, VersionId=policy_version)
+                if can_assume_role(policy_doc['PolicyVersion']['Document'], role_arn):
+                    users_with_access.append(user_name)
+                    break
+    
+    return users_with_access
+
+def can_assume_role(policy_doc, role_arn):
+    for statement in policy_doc.get('Statement', []):
+        if statement.get('Effect') == 'Allow':
+            actions = statement.get('Action', [])
+            if isinstance(actions, str):
+                actions = [actions]
+            if 'sts:AssumeRole' in actions or '*' in actions:
+                resources = statement.get('Resource', [])
+                if isinstance(resources, str):
+                    resources = [resources]
+                if role_arn in resources or '*' in resources:
+                    return True
+    return False
+
+# Usage
+role_arn = "arn:aws:iam::123456789012:role/MyRole"
+users = get_users_for_role(role_arn)
+print(f"Users with access to {role_arn}: {users}")
+# Find who actually assumed the role (requires CloudTrail)
+aws cloudtrail lookup-events \
+    --lookup-attributes AttributeKey=ResourceName,AttributeValue=<role-arn> \
+    --query 'Events[?EventName==`AssumeRole`].[Username,EventTime]' \
+    --output table
+The CloudTrail approach shows actual usage, while the IAM policy approach shows potential access.
